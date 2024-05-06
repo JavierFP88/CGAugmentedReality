@@ -42,42 +42,43 @@
             width: 100%;
             height: 100%;
         }
+
+        #orientationInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
     </style>
 
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
     <script src="https://js.arcgis.com/4.29/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ionic-native/device-orientation/dist/index.js"></script>
+
 </head>
 
 <body>
-    <div id="container">
-        <div id="backgroundDiv"></div>
-        <div id="viewDiv"></div>
+    <div id="orientationInfo">
+        <p>Alpha: <span id="alphaValue">-</span></p>
+        <p>Beta: <span id="betaValue">-</span></p>
+        <p>Gamma: <span id="gammaValue">-</span></p>
     </div>
+    <div id="container">        
+        <div id="backgroundDiv"></div>        
+        <div id="viewDiv"></div>
+    </div>    
 
-    <script src="https://cdn.jsdelivr.net/npm/@ionic-native/device-orientation/dist/index.js"></script>
     <script>
-        require([
-            "esri/WebScene",
-            "esri/views/SceneView",
-            "esri/config",
-            "esri/geometry/Point",
-            "esri/geometry/SpatialReference"
-        ], function (WebScene, SceneView, esriConfig, Point, SpatialReference) {
-            const map = new WebScene({
-                portalItem: {
-                    id: "78127552449d4cceaa545b84fd5e5f3d"
-                },
-                ground: {
-                surfaceColor: [226, 240, 255],
-                    //basemap:false,
-                    opacity:0.3
-                }
-            });
 
-            const backgroundDiv = document.getElementById('backgroundDiv');
+        const backgroundDiv = document.getElementById('backgroundDiv');            
+        
 
-            // Verifica si el dispositivo tiene cámaras disponibles
-            if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+
+        // Verifica si el dispositivo tiene cámaras disponibles
+        if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
                 navigator.mediaDevices.enumerateDevices()
                     .then(devices => {
                         const cameras = devices.filter(device => device.kind === 'videoinput');
@@ -104,6 +105,29 @@
                 console.error('El navegador no admite la API de medios o la captura de video.');
             }
 
+        require([
+            "esri/WebScene",
+            "esri/views/SceneView",
+            "esri/config",
+            "esri/geometry/Point",
+            "esri/geometry/SpatialReference"
+        ], function (WebScene, SceneView, esriConfig, Point, SpatialReference) {
+
+            let alphaValue = document.getElementById("alphaValue");
+            let betaValue = document.getElementById("betaValue");
+            let gammaValue = document.getElementById("gammaValue");
+
+            const map = new WebScene({
+                portalItem: {
+                    id: "6d66489bb650428489988e4b6a3ff27c"
+                },
+                ground: {
+                    surfaceColor: [226, 240, 255],
+                    //basemap:false,
+                    opacity: 0.5
+                }
+            });   
+            
             const view = new SceneView({
                 container: "viewDiv",
                 map: map,
@@ -128,9 +152,53 @@
                 },
                 padding: {
                     top: 100
+                },
+                camera: {
+                    position: [-80, 25, 5], // [longitud, latitud, altura]
+                    tilt: 80, // Ángulo de inclinación de la cámara
+                    fov: 70, // Campo de visión (FOV) en grados
                 }
-            });
+            });            
+            
+            // Handle camera controls with device orientation (if available)
+            let isDeviceOrientationAvailable = false;
+            let alpha, beta, gamma;
 
+            if (window.DeviceOrientationEvent) {
+                isDeviceOrientationAvailable = true;
+                window.addEventListener('deviceorientation', function(event) {
+                    alpha = event.alpha; // Direction of device from north, in degrees (0-360)
+                    beta = event.beta; // Device tilt (forward/backward), in degrees (-90 to +90)
+                    gamma = event.gamma; // Device tilt (left/right), in degrees (-90 to +90)
+
+                    alphaValue.textContent = event.alpha.toFixed(2);
+                    betaValue.textContent = event.beta.toFixed(2);
+                    gammaValue.textContent = event.gamma.toFixed(2);
+
+                    view.camera.heading = parseFloat(event.alpha.toFixed(2)) || 0;
+                    view.camera.tilt = event.beta.toFixed(2) || 0;
+                    view.camera.roll = event.gamma.toFixed(2) || 0;
+                    console.log(view.camera.heading);
+
+                    //view.update();
+                });
+            } else {
+                console.warn('Device orientation is not supported on this device.');
+            }
+
+            
+
+            //Posicion Inicial
+            navigator.geolocation.getCurrentPosition(function(position) {
+                view.camera.position=[position.coords.longitude,position.coords.latitude,5]                
+                //console.log("Longitud: " + lon);
+            }, function(error) {
+                console.error('Error al obtener la posición del dispositivo:', error);
+            });    
+
+            
+            
+            
             
         });
     </script>
