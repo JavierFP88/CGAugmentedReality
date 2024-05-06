@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>Custom background for SceneView | Sample | ArcGIS Maps SDK for JavaScript 4.29</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #backgroundDiv {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* Asegura que el video no se desborde */
+        }
+
+        #backgroundDiv video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Ajusta el video al tamaño del div */
+        }
+
+        #viewDiv {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.29/"></script>
+</head>
+
+<body>
+    <div id="container">
+        <div id="backgroundDiv"></div>
+        <div id="viewDiv"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@ionic-native/device-orientation/dist/index.js"></script>
+    <script>
+        require([
+            "esri/WebScene",
+            "esri/views/SceneView",
+            "esri/config",
+            "esri/geometry/Point",
+            "esri/geometry/SpatialReference"
+        ], function (WebScene, SceneView, esriConfig, Point, SpatialReference) {
+            const map = new WebScene({
+                portalItem: {
+                    id: "78127552449d4cceaa545b84fd5e5f3d"
+                },
+                ground: {
+                surfaceColor: [226, 240, 255],
+                    //basemap:false,
+                    opacity:0.3
+                }
+            });
+
+            const backgroundDiv = document.getElementById('backgroundDiv');
+
+            // Verifica si el dispositivo tiene cámaras disponibles
+            if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+                navigator.mediaDevices.enumerateDevices()
+                    .then(devices => {
+                        const cameras = devices.filter(device => device.kind === 'videoinput');
+                        if (cameras.length > 0) {
+                            // Si hay cámaras disponibles, inicia la captura de video
+                            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                                .then(function (stream) {
+                                    const video = document.createElement('video');
+                                    video.srcObject = stream;
+                                    video.play();
+                                    backgroundDiv.appendChild(video);
+                                })
+                                .catch(function (err) {
+                                    console.log('Error al acceder a la cámara: ', err);
+                                });
+                        } else {
+                            console.log('No se encontraron cámaras disponibles.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al enumerar dispositivos:', error);
+                    });
+            } else {
+                console.error('El navegador no admite la API de medios o la captura de video.');
+            }
+
+            const view = new SceneView({
+                container: "viewDiv",
+                map: map,
+                alphaCompositingEnabled: true,
+                environment: {
+                    // set a transparent background
+                    background: {
+                        type: "color",
+                        color: [255, 255, 255, 0]
+                    },
+                    lighting: {
+                        type: "virtual"
+                    },
+                    // disable stars
+                    starsEnabled: false,
+                    // disable atmosphere
+                    atmosphereEnabled: false
+                },
+                // limit zooming in and out
+                ui: {
+                    components: ["attribution"]
+                },
+                padding: {
+                    top: 100
+                }
+            });
+
+            
+        });
+    </script>
+</body>
+
+</html>
