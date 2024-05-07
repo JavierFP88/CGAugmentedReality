@@ -60,58 +60,51 @@
 
 </head>
 
-<body>
-    <div id="orientationInfo">
-        <p>Alpha: <span id="alphaValue">-</span></p>
-        <p>Beta: <span id="betaValue">-</span></p>
-        <p>Gamma: <span id="gammaValue">-</span></p>
-    </div>
-    <div id="container">        
-        <div id="backgroundDiv"></div>        
+<body>    
+    <div id="container">
+        <div id="backgroundDiv"></div>
         <div id="viewDiv"></div>
-    </div>    
-
+    </div>
     <script>
 
-        const backgroundDiv = document.getElementById('backgroundDiv');            
-        
-
+        const backgroundDiv = document.getElementById('backgroundDiv');
 
         // Verifica si el dispositivo tiene cámaras disponibles
         if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
-                navigator.mediaDevices.enumerateDevices()
-                    .then(devices => {
-                        const cameras = devices.filter(device => device.kind === 'videoinput');
-                        if (cameras.length > 0) {
-                            // Si hay cámaras disponibles, inicia la captura de video
-                            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-                                .then(function (stream) {
-                                    const video = document.createElement('video');
-                                    video.srcObject = stream;
-                                    video.play();
-                                    backgroundDiv.appendChild(video);
-                                })
-                                .catch(function (err) {
-                                    console.log('Error al acceder a la cámara: ', err);
-                                });
-                        } else {
-                            console.log('No se encontraron cámaras disponibles.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error al enumerar dispositivos:', error);
-                    });
-            } else {
-                console.error('El navegador no admite la API de medios o la captura de video.');
-            }
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    const cameras = devices.filter(device => device.kind === 'videoinput');
+                    if (cameras.length > 0) {
+                        // Si hay cámaras disponibles, inicia la captura de video
+                        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                            .then(function (stream) {
+                                const video = document.createElement('video');
+                                video.srcObject = stream;
+                                video.play();
+                                backgroundDiv.appendChild(video);
+                            })
+                            .catch(function (err) {
+                                console.log('Error al acceder a la cámara: ', err);
+                            });
+                    } else {
+                        console.log('No se encontraron cámaras disponibles.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al enumerar dispositivos:', error);
+                });
+        } else {
+            console.error('El navegador no admite la API de medios o la captura de video.');
+        }
 
         require([
             "esri/WebScene",
             "esri/views/SceneView",
             "esri/config",
             "esri/geometry/Point",
-            "esri/geometry/SpatialReference"
-        ], function (WebScene, SceneView, esriConfig, Point, SpatialReference) {
+            "esri/geometry/SpatialReference",
+            "esri/Camera"
+        ], function (WebScene, SceneView, esriConfig, Point, SpatialReference, Camera) {
 
             let alphaValue = document.getElementById("alphaValue");
             let betaValue = document.getElementById("betaValue");
@@ -124,10 +117,10 @@
                 ground: {
                     surfaceColor: [226, 240, 255],
                     //basemap:false,
-                    opacity: 0.5
+                    opacity: 0
                 }
-            });   
-            
+            });
+
             const view = new SceneView({
                 container: "viewDiv",
                 map: map,
@@ -158,48 +151,52 @@
                     tilt: 80, // Ángulo de inclinación de la cámara
                     fov: 70, // Campo de visión (FOV) en grados
                 }
-            });            
-            
+            });
+
             // Handle camera controls with device orientation (if available)
             let isDeviceOrientationAvailable = false;
             let alpha, beta, gamma;
+            let initialAlpha;
 
             if (window.DeviceOrientationEvent) {
                 isDeviceOrientationAvailable = true;
-                window.addEventListener('deviceorientation', function(event) {
+                window.addEventListener('deviceorientation', function (event) {
                     alpha = event.alpha; // Direction of device from north, in degrees (0-360)
                     beta = event.beta; // Device tilt (forward/backward), in degrees (-90 to +90)
-                    gamma = event.gamma; // Device tilt (left/right), in degrees (-90 to +90)
+                    gamma = event.gamma; // Device tilt (left/right), in degrees (-90 to +90)              
+                   
 
-                    alphaValue.textContent = event.alpha.toFixed(2);
-                    betaValue.textContent = event.beta.toFixed(2);
-                    gammaValue.textContent = event.gamma.toFixed(2);
+                    
+                    
 
-                    view.camera.heading = parseFloat(event.alpha.toFixed(2)) || 0;
-                    view.camera.tilt = event.beta.toFixed(2) || 0;
-                    view.camera.roll = event.gamma.toFixed(2) || 0;
-                    console.log(view.camera.heading);
+                    const newCam = view.camera.clone();
+                    view.camera = newCam;
 
-                    //view.update();
+                    //const rotation = 360 - (event.alpha - initialOrientation);
+                   // newHeading = view.camera.heading + (initialAlpha - 90);
+                   // newCam.heading = newHeading;
+                    view.camera.heading =event.alpha ;
+                    view.camera.tilt = event.beta || 0;
+                    view.camera.roll = event.gamma || 0;
                 });
             } else {
                 console.warn('Device orientation is not supported on this device.');
             }
 
-            
+
 
             //Posicion Inicial
-            navigator.geolocation.getCurrentPosition(function(position) {
-                view.camera.position=[position.coords.longitude,position.coords.latitude,5]                
+            navigator.geolocation.getCurrentPosition(function (position) {
+                view.camera.position = [position.coords.longitude, position.coords.latitude, 5]
                 //console.log("Longitud: " + lon);
-            }, function(error) {
+            }, function (error) {
                 console.error('Error al obtener la posición del dispositivo:', error);
-            });    
+            });
 
-            
-            
-            
-            
+
+
+
+
         });
     </script>
 </body>
